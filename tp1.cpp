@@ -61,17 +61,14 @@ cv::Mat afficheHistogrammes( const std::vector<double>& h_I, const std::vector<d
   return image;
 }
 
-cv::Mat egaliser( cv::Mat image, const std::vector<double>& H_I ) 
-{
-  cv::Mat image2( image.rows, image.cols, CV_8UC1);
-  double value = 0.0;      
+void egaliser( cv::Mat& image, const std::vector<double>& H_I )
+{   
   for (size_t x = 0; x < image.rows; x++) {
     for (size_t y = 0; y < image.cols; y++) {
-      value += H_I[image.at<uchar>(x,y)];
-      image2.at<uchar>(x,y) = (255 / (image.rows * image.cols)) * value;
+      double value = H_I[image.at<uchar>(x,y)];
+      image.at<uchar>(x,y) = value * 255;
     }
   }
-  return image2;
 }
 
 int main(int argc, char *argv[])
@@ -97,18 +94,24 @@ int main(int argc, char *argv[])
   }
 
   imshow("TP1", imgMat);           // l'affiche dans la fenêtre
+
   std::vector<double> h_I = histogramme(imgMat);
   std::vector<double> H_I = histogramme_cumule(histogramme(imgMat));
   cv::Mat histo = afficheHistogrammes(h_I, H_I);
-  cv::Mat imgMatEgalise = egaliser(imgMat, H_I);
+  egaliser(imgMat, H_I);
   namedWindow("Histo", cv::WINDOW_NORMAL);
   imshow("Histo", histo);
   namedWindow("Egalise", cv::WINDOW_NORMAL);
-  imshow("Egalise", imgMatEgalise);
+  imshow("Egalise", imgMat);
+  h_I = histogramme(imgMat);
+  H_I = histogramme_cumule(histogramme(imgMat));
+  cv::Mat histoEgalise = afficheHistogrammes(h_I, H_I);
+  namedWindow("HistoEgalise", cv::WINDOW_NORMAL);
+  imshow("HistoEgalise", histoEgalise);
 
   while ( waitKey(50) < 0 )          // attend une touche
   { // Affiche la valeur du slider
-    if ( value != old_value )
+    if (value != old_value)
     {
       old_value = value;
     }

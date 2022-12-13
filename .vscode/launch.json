@@ -6,7 +6,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/tp1",
             "args": [
-                "img/winnie.jpg"
+                "img/lena.jpg"
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
