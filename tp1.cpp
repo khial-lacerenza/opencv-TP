@@ -12,30 +12,66 @@ std::vector<double> histogramme( Mat image )
       h_I[image.at<uchar>(x,y)]++;
     }
   }
+  for (size_t i = 0; i < h_I.size(); i++) {
+    h_I[i] /= image.rows * image.cols;
+  }
   return h_I;
 }
 
 std::vector<double> histogramme_cumule( const std::vector<double>& h_I )
 {
-  std::vector<double> h_I_cumule(256, 0);
+  std::vector<double> H_I_cumule(256, 0);
   for (size_t x = 0; x < h_I.size(); x++) {
     for (size_t y = 0; y < x; y++) {
-      h_I_cumule[x] += h_I[y];
+      H_I_cumule[x] += h_I[y];
     }
   }
-  return h_I_cumule;
+  return H_I_cumule;
 }
+
 
 cv::Mat afficheHistogrammes( const std::vector<double>& h_I, const std::vector<double>& H_I )
 {
-  cv::Mat image( 256, 512, CV_8UC1 );
+  cv::Mat image( 256, 512, CV_8UC1, cv::Scalar(255));
+  double maxh = h_I[0];
   for (size_t i = 0; i < h_I.size(); i++) {
-    cv::line( image, cv::Point(i, 256), cv::Point(i, 256 - h_I[i]), cv::Scalar(255) );
+    if (h_I[i] > maxh) {
+      maxh = h_I[i];
+    }
   }
+  double maxH = H_I[0];
   for (size_t i = 0; i < H_I.size(); i++) {
-    cv::line(image, cv::Point(i, 256), cv::Point(i, 256 - H_I[i]), cv::Scalar(255));
+    if (H_I[i] > maxH) {
+      maxH = H_I[i];
+    }
   }
+
+  double height = image.rows;
+  for (size_t i = 0; i < h_I.size(); i++) {
+    cv::line(image, cv::Point(i, height-1), cv::Point(i, height - (h_I[i] / maxh) * height), cv::Scalar(0));
+  }
+
+  double secondHalf = image.cols / 2;
+  for (size_t i = 0; i < H_I.size(); i++) {
+    double x = i + secondHalf;
+    double y = image.rows - H_I[i] * image.rows;
+    cv::line(image, cv::Point(x, height), cv::Point(x, y), cv::Scalar(0));
+  }
+  
   return image;
+}
+
+cv::Mat egaliser( cv::Mat image, const std::vector<double>& H_I ) 
+{
+  cv::Mat image2( image.rows, image.cols, CV_8UC1);
+  double value = 0.0;      
+  for (size_t x = 0; x < image.rows; x++) {
+    for (size_t y = 0; y < image.cols; y++) {
+      value += H_I[image.at<uchar>(x,y)];
+      image2.at<uchar>(x,y) = (255 / (image.rows * image.cols)) * value;
+    }
+  }
+  return image2;
 }
 
 int main(int argc, char *argv[])
@@ -52,7 +88,7 @@ int main(int argc, char *argv[])
   int value = 128;
   namedWindow( "TP1");               // crée une fenêtre
   createTrackbar( "track", "TP1", &value, 255, NULL); // un slider
-  Mat imgMat = imread(img);        // lit l'image img
+  cv::Mat imgMat = imread(img);        // lit l'image img
 
   if (imgMat.channels() != 1) {
     cv::Mat greyMat;
@@ -61,11 +97,14 @@ int main(int argc, char *argv[])
   }
 
   imshow("TP1", imgMat);           // l'affiche dans la fenêtre
-
-  cv::Mat histo = afficheHistogrammes(histogramme(imgMat), histogramme_cumule(histogramme(imgMat)));
-
+  std::vector<double> h_I = histogramme(imgMat);
+  std::vector<double> H_I = histogramme_cumule(histogramme(imgMat));
+  cv::Mat histo = afficheHistogrammes(h_I, H_I);
+  cv::Mat imgMatEgalise = egaliser(imgMat, H_I);
   namedWindow("Histo", cv::WINDOW_NORMAL);
   imshow("Histo", histo);
+  namedWindow("Egalise", cv::WINDOW_NORMAL);
+  imshow("Egalise", imgMatEgalise);
 
   while ( waitKey(50) < 0 )          // attend une touche
   { // Affiche la valeur du slider
