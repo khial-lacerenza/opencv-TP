@@ -3,6 +3,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 using namespace cv;
 
+const int WIDTH = 700;
+
 std::vector<double> histogramme( Mat image )
 {
   std::vector<double> h_I(256, 0);
@@ -76,10 +78,20 @@ void afficheWindowMatrix(std::string name, Mat mat, WindowFlags flag = WINDOW_AU
     imshow(name, mat);
 }
 
-int exo1(Mat imgMat, bool convert)
+
+/* Fonction exo1 qui corrige la dynamique d'une image 
+  @param Mat imgMat : matrice de pixels correspondant à l'image
+  @param bool convert: true si l'user veut convertir l'image couleur en N&B false sinon
+*/
+void exo1(Mat imgMat, bool convert)
 {
+  if (imgMat.size().width > WIDTH) {
+    double scale = (double) WIDTH  / imgMat.size().width;
+    resize(imgMat, imgMat, Size(), scale, scale);
+  }
   // Question b
-  bool color = imgMat.channels() != 1;
+  int channels = imgMat.channels();
+  bool color = channels != 1;
   if (convert && color) {
     Mat greyMat;
     cv::cvtColor(imgMat, greyMat, cv::COLOR_RGB2GRAY);  
@@ -90,6 +102,7 @@ int exo1(Mat imgMat, bool convert)
   Mat orginalImg = imgMat;
   imshow("TP1", orginalImg);
 
+  // Egalisation noir et blanc
   if(!color){
     // Question c
     std::vector<double> h_I = histogramme(imgMat);
@@ -105,7 +118,7 @@ int exo1(Mat imgMat, bool convert)
     Mat histoEgalise = drawHistogrammes(h_I, H_I);
     afficheWindowMatrix("Histo Egalisé", histoEgalise);
   }
-  else {
+  else { // Egalisation couleur
     // Question e
     // On convertie l'image rgb en hsv
     std::vector<Mat> hsv;
@@ -133,9 +146,6 @@ int exo1(Mat imgMat, bool convert)
     cvtColor(imgMat, imgMat, cv::COLOR_HSV2RGB);
     afficheWindowMatrix("Image Egalise Couleur", imgMat);
   }
-  
-  
-  return 0;
 }
 
 int main(int argc, char *argv[])
@@ -160,7 +170,7 @@ int main(int argc, char *argv[])
   createTrackbar( "track", "TP1", &value, 255, NULL); // un slider
   Mat imgMat = imread(img);        // lit l'image img
 
-  int res = exo1(imgMat, convert);
+ exo1(imgMat, convert);
 
   while ( waitKey(50) < 0 )          // attend une touche
   { // Affiche la valeur du slider
@@ -169,5 +179,4 @@ int main(int argc, char *argv[])
       old_value = value;
     }
   }
-
 }

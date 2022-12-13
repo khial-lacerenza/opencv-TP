@@ -6,7 +6,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/tp1",
             "args": [
-                "img/lena.jpg",
+                "img/sky.jpg",
                 "0",
             ],
             "stopAtEntry": false,
