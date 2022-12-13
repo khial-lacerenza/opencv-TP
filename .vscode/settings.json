@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.html": "html",
+        "ostream": "cpp",
+        "*.tcc": "cpp",
+        "fstream": "cpp",
+        "bitset": "cpp",
+        "chrono": "cpp",
+        "algorithm": "cpp"
+    }
+}
