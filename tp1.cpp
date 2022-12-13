@@ -3,7 +3,6 @@
 #include <opencv2/imgproc/imgproc.hpp>
 using namespace cv;
 
-
 std::vector<double> histogramme( Mat image )
 {
   std::vector<double> h_I(256, 0);
@@ -30,9 +29,9 @@ std::vector<double> histogramme_cumule( const std::vector<double>& h_I )
 }
 
 
-cv::Mat afficheHistogrammes( const std::vector<double>& h_I, const std::vector<double>& H_I )
+Mat drawHistogrammes( const std::vector<double>& h_I, const std::vector<double>& H_I )
 {
-  cv::Mat image( 256, 512, CV_8UC1, cv::Scalar(255));
+  Mat image( 256, 512, CV_8UC1, Scalar(255));
   double maxh = h_I[0];
   for (size_t i = 0; i < h_I.size(); i++) {
     if (h_I[i] > maxh) {
@@ -48,20 +47,20 @@ cv::Mat afficheHistogrammes( const std::vector<double>& h_I, const std::vector<d
 
   double height = image.rows;
   for (size_t i = 0; i < h_I.size(); i++) {
-    cv::line(image, cv::Point(i, height-1), cv::Point(i, height - (h_I[i] / maxh) * height), cv::Scalar(0));
+    cv::line(image, Point(i, height-1), Point(i, height - (h_I[i] / maxh) * height), Scalar(0));
   }
 
   double secondHalf = image.cols / 2;
   for (size_t i = 0; i < H_I.size(); i++) {
     double x = i + secondHalf;
     double y = image.rows - H_I[i] * image.rows;
-    cv::line(image, cv::Point(x, height), cv::Point(x, y), cv::Scalar(0));
+    cv::line(image, Point(x, height), Point(x, y), Scalar(0));
   }
   
   return image;
 }
 
-void egaliser( cv::Mat& image, const std::vector<double>& H_I )
+void egaliser( Mat& image, const std::vector<double>& H_I )
 {   
   for (size_t x = 0; x < image.rows; x++) {
     for (size_t y = 0; y < image.cols; y++) {
@@ -71,43 +70,97 @@ void egaliser( cv::Mat& image, const std::vector<double>& H_I )
   }
 }
 
+void afficheWindowMatrix(std::string name, Mat mat, WindowFlags flag = WINDOW_AUTOSIZE)
+{
+    namedWindow(name, flag);
+    imshow(name, mat);
+}
+
+int exo1(Mat imgMat, bool convert)
+{
+  // Question b
+  bool color = imgMat.channels() != 1;
+  if (convert && color) {
+    Mat greyMat;
+    cv::cvtColor(imgMat, greyMat, cv::COLOR_RGB2GRAY);  
+    imgMat = greyMat; 
+    color = false;
+  }
+  
+  Mat orginalImg = imgMat;
+  imshow("TP1", orginalImg);
+
+  if(!color){
+    // Question c
+    std::vector<double> h_I = histogramme(imgMat);
+    std::vector<double> H_I = histogramme_cumule(histogramme(imgMat));
+    Mat histo = drawHistogrammes(h_I, H_I);
+    afficheWindowMatrix("Histo", histo);
+
+    // Question d
+    egaliser(imgMat, H_I);
+    afficheWindowMatrix("Image Egalisée", imgMat);
+    h_I = histogramme(imgMat);
+    H_I = histogramme_cumule(h_I);
+    Mat histoEgalise = drawHistogrammes(h_I, H_I);
+    afficheWindowMatrix("Histo Egalisé", histoEgalise);
+  }
+  else {
+    // Question e
+    // On convertie l'image rgb en hsv
+    std::vector<Mat> hsv;
+    cvtColor(imgMat, imgMat, cv::COLOR_RGB2HSV);
+    split(imgMat, hsv);
+    // On récupère la valeur V qu'on veut changer
+    Mat V = hsv[2];
+    // On récupère l'histogramme de V et on l'égalise
+    std::vector<double> h_V = histogramme(V);
+    std::vector<double> H_V = histogramme_cumule(h_V);
+    Mat histoEgaliseCouleur = drawHistogrammes(h_V, H_V);
+    afficheWindowMatrix("Histo Avant Egalise Couleur", histoEgaliseCouleur);
+    
+    // egalisation
+    egaliser(V, H_V);
+
+    h_V = histogramme(V);
+    H_V = histogramme_cumule(h_V);
+    // Merge de l'image hsv et on affiche
+    histoEgaliseCouleur = drawHistogrammes(h_V, H_V);
+    afficheWindowMatrix("Histo Egalise Couleur", histoEgaliseCouleur);
+
+    std::vector<Mat> newChannels = {hsv[0], hsv[1], V};
+    merge(newChannels, imgMat);
+    cvtColor(imgMat, imgMat, cv::COLOR_HSV2RGB);
+    afficheWindowMatrix("Image Egalise Couleur", imgMat);
+  }
+  
+  
+  return 0;
+}
+
 int main(int argc, char *argv[])
 {
 
+  bool convert = false;
   // look for image path in arguments
   if(argc < 2) {
     std::cout << "Usage: " << argv[0] << " <image_path>" << std::endl;
     return -1;
   }
+  
   std::string img(argv[1]);
-
+  
+  if (argc > 2 ){
+    convert = (bool) atoi(argv[2]);
+  }
+  
   int old_value = 0;
   int value = 128;
   namedWindow( "TP1");               // crée une fenêtre
   createTrackbar( "track", "TP1", &value, 255, NULL); // un slider
-  cv::Mat imgMat = imread(img);        // lit l'image img
+  Mat imgMat = imread(img);        // lit l'image img
 
-  if (imgMat.channels() != 1) {
-    cv::Mat greyMat;
-    cv::cvtColor(imgMat, greyMat, cv::COLOR_RGB2GRAY);  
-    imgMat = greyMat;
-  }
-
-  imshow("TP1", imgMat);           // l'affiche dans la fenêtre
-
-  std::vector<double> h_I = histogramme(imgMat);
-  std::vector<double> H_I = histogramme_cumule(histogramme(imgMat));
-  cv::Mat histo = afficheHistogrammes(h_I, H_I);
-  egaliser(imgMat, H_I);
-  namedWindow("Histo", cv::WINDOW_NORMAL);
-  imshow("Histo", histo);
-  namedWindow("Egalise", cv::WINDOW_NORMAL);
-  imshow("Egalise", imgMat);
-  h_I = histogramme(imgMat);
-  H_I = histogramme_cumule(histogramme(imgMat));
-  cv::Mat histoEgalise = afficheHistogrammes(h_I, H_I);
-  namedWindow("HistoEgalise", cv::WINDOW_NORMAL);
-  imshow("HistoEgalise", histoEgalise);
+  int res = exo1(imgMat, convert);
 
   while ( waitKey(50) < 0 )          // attend une touche
   { // Affiche la valeur du slider
@@ -116,4 +169,5 @@ int main(int argc, char *argv[])
       old_value = value;
     }
   }
+
 }
