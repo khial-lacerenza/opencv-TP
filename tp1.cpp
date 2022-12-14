@@ -4,7 +4,7 @@
 #include <cmath>
 using namespace cv;
 
-const int WIDTH = 700;
+const int WIDTH = 1000;
 
 std::vector<double> histogramme( Mat image )
 {
@@ -30,7 +30,6 @@ std::vector<double> histogramme_cumule( const std::vector<double>& h_I )
   }
   return H_I_cumule;
 }
-
 
 Mat drawHistogrammes( const std::vector<double>& h_I, const std::vector<double>& H_I )
 {
@@ -87,32 +86,38 @@ void scaleImage(Mat& image, int width)
   }
 }
 
-/* Fonction correction_dynamique qui corrige la dynamique d'une image 
-  @param Mat imgMat : matrice de pixels correspondant à l'image
-  @param bool convert: true si l'user veut convertir l'image couleur en N&B false sinon
-*/
-void correction_dynamique(Mat imgMat, bool convert)
+bool convertToGray(Mat &imgMat, bool convert) 
 {
-  // Question b
   int channels = imgMat.channels();
   bool color = channels != 1;
   if (convert && color) {
     cv::cvtColor(imgMat, imgMat, cv::COLOR_RGB2GRAY);  
     color = false;
   }
+  return color;
+}
+
+/* Fonction correction_dynamique qui corrige la dynamique d'une image 
+  @param Mat imgMat : matrice de pixels correspondant à l'image
+  @param bool convert: true si l'user veut convertir l'image couleur en N&B false sinon
+*/
+void correction_dynamique(Mat imgMat, bool convert)
+{
+  // Question 1) b)
+  bool color = convertToGray(imgMat, convert);
   
   Mat orginalImg = imgMat;
   imshow("TP1", orginalImg);
 
   // Egalisation noir et blanc
   if(!color){
-    // Question c
+    // Question  1) c)
     std::vector<double> h_I = histogramme(imgMat);
     std::vector<double> H_I = histogramme_cumule(histogramme(imgMat));
     Mat histo = drawHistogrammes(h_I, H_I);
     afficheWindowMatrix("Histo", histo);
 
-    // Question d
+    // Question 1) d)
     egaliser(imgMat, H_I);
     afficheWindowMatrix("Image Egalisée", imgMat);
     h_I = histogramme(imgMat);
@@ -121,7 +126,7 @@ void correction_dynamique(Mat imgMat, bool convert)
     afficheWindowMatrix("Histo Egalisé", histoEgalise);
   }
   else { // Egalisation couleur
-    // Question e
+    // Question 1) e)
     // On convertie l'image rgb en hsv
     std::vector<Mat> hsv;
     cvtColor(imgMat, imgMat, cv::COLOR_RGB2HSV);
@@ -154,22 +159,22 @@ void correction_dynamique(Mat imgMat, bool convert)
   @param float couleur du pixel a traiter
   @return couleur la plus proche N&B
 */
-float couleurProcheNB(float pixel)
+float couleurProche(float pixel)
 {
-  return round(pixel+.2);
+  return round(pixel);
 }
 
-void tramage_floyd_steinberg( cv::Mat input, Mat &output)
+void tramage_floyd_steinberg(cv::Mat input, Mat &output)
 {
+  // Question 2) b)
   int width = input.rows;
   int height = input.cols;
-  cv::cvtColor(input, input, COLOR_RGB2GRAY);
   input.convertTo(output, CV_32FC1, 1/255.0);
   for (size_t y = 0; y < height-1; y++) {
     for (size_t x = 1; x < width-1; x++){
 
       float pixel = output.at<float>(x,y);
-      float newPixel = couleurProcheNB(pixel);
+      float newPixel = couleurProche(pixel);
       output.at<float>(x,y) = newPixel;
       float e = pixel - newPixel;
       
@@ -185,6 +190,16 @@ void tramage_floyd_steinberg( cv::Mat input, Mat &output)
     }
   }
   output.convertTo(output, CV_8UC1, 255.0);
+}
+
+void tramage_fs_multi_chans(Mat input, Mat &output) 
+{
+    std::vector<Mat> rgb;
+    split(input, rgb);
+    for (Mat &mat : rgb) {
+      tramage_floyd_steinberg(mat, mat);
+    }
+    merge(rgb, output);
 }
 
 int main(int argc, char *argv[])
@@ -208,12 +223,19 @@ int main(int argc, char *argv[])
   createTrackbar( "track", "TP1", &value, 255, NULL); // un slider
   Mat imgMat = imread(img);        // lit l'image img
 
+
   scaleImage(imgMat, WIDTH);
   // correction_dynamique(imgMat, convert);
 
+  // tramage N&B
   Mat tramedMat;
-  tramage_floyd_steinberg(imgMat, tramedMat);
-  afficheWindowMatrix("Tramed Image", tramedMat);
+  // tramage_floyd_steinberg(imgMat, tramedMat);
+  // afficheWindowMatrix("Tramed Image", tramedMat);
+
+  // tramage color
+  tramage_fs_multi_chans(imgMat, tramedMat);
+  afficheWindowMatrix("Tramed Image Couleur", tramedMat);
+
 
   while ( waitKey(50) < 0 )          // attend une touche
   { // Affiche la valeur du slider

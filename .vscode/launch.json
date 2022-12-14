@@ -6,8 +6,8 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/tp1",
             "args": [
-                "img/city.jpg",
-                "1",
+                "img/xp.jpg",
+                "0",
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
