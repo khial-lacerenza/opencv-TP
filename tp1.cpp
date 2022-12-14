@@ -79,6 +79,13 @@ void afficheWindowMatrix(std::string name, Mat mat, WindowFlags flag = WINDOW_AU
     imshow(name, mat);
 }
 
+void scaleImage(Mat& image, int width)
+{
+  if (image.size().width > width) {
+    double scale = (double) width  / image.size().width;
+    resize(image, image, Size(), scale, scale);
+  }
+}
 
 /* Fonction correction_dynamique qui corrige la dynamique d'une image 
   @param Mat imgMat : matrice de pixels correspondant à l'image
@@ -86,10 +93,6 @@ void afficheWindowMatrix(std::string name, Mat mat, WindowFlags flag = WINDOW_AU
 */
 void correction_dynamique(Mat imgMat, bool convert)
 {
-  if (imgMat.size().width > WIDTH) {
-    double scale = (double) WIDTH  / imgMat.size().width;
-    resize(imgMat, imgMat, Size(), scale, scale);
-  }
   // Question b
   int channels = imgMat.channels();
   bool color = channels != 1;
@@ -156,13 +159,12 @@ float couleurProcheNB(float pixel)
   return round(pixel+.2);
 }
 
-void tramage_floyd_steinberg( cv::Mat input, cv::Mat &output )
+void tramage_floyd_steinberg( cv::Mat input, Mat &output)
 {
   int width = input.rows;
   int height = input.cols;
   cv::cvtColor(input, input, COLOR_RGB2GRAY);
   input.convertTo(output, CV_32FC1, 1/255.0);
-  
   for (size_t y = 0; y < height-1; y++) {
     for (size_t x = 1; x < width-1; x++){
 
@@ -172,10 +174,14 @@ void tramage_floyd_steinberg( cv::Mat input, cv::Mat &output )
       float e = pixel - newPixel;
       
       // color propagation
-      output.at<float>(x+1,y)   = output.at<float>(x+1,y)   + 7/16 * e;
-      output.at<float>(x-1,y+1) = output.at<float>(x-1,y+1) + 3/16 * e; 
-      output.at<float>(x,  y+1) = output.at<float>(x,  y+1) + 5/16 * e;
-      output.at<float>(x+1,y+1) = output.at<float>(x+1,y+1) + 1/16 * e; 
+      if (x < width-1)
+        output.at<float>(x+1,y)   = output.at<float>(x+1,y)   + 7/16.0 * e;
+      if (x > 0 && y < height-1)
+        output.at<float>(x-1,y+1) = output.at<float>(x-1,y+1) + 3/16.0 * e; 
+      if (y < height-1)
+        output.at<float>(x,  y+1) = output.at<float>(x,  y+1) + 5/16.0 * e;
+      if (x < width-1 && y < height-1)
+        output.at<float>(x+1,y+1) = output.at<float>(x+1,y+1) + 1/16.0 * e; 
     }
   }
   output.convertTo(output, CV_8UC1, 255.0);
@@ -202,9 +208,9 @@ int main(int argc, char *argv[])
   createTrackbar( "track", "TP1", &value, 255, NULL); // un slider
   Mat imgMat = imread(img);        // lit l'image img
 
+  scaleImage(imgMat, WIDTH);
   // correction_dynamique(imgMat, convert);
 
-  
   Mat tramedMat;
   tramage_floyd_steinberg(imgMat, tramedMat);
   afficheWindowMatrix("Tramed Image", tramedMat);
