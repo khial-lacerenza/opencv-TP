@@ -1,6 +1,7 @@
 #include <iostream>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <cmath>
 using namespace cv;
 
 const int WIDTH = 700;
@@ -79,11 +80,11 @@ void afficheWindowMatrix(std::string name, Mat mat, WindowFlags flag = WINDOW_AU
 }
 
 
-/* Fonction exo1 qui corrige la dynamique d'une image 
+/* Fonction correction_dynamique qui corrige la dynamique d'une image 
   @param Mat imgMat : matrice de pixels correspondant à l'image
   @param bool convert: true si l'user veut convertir l'image couleur en N&B false sinon
 */
-void exo1(Mat imgMat, bool convert)
+void correction_dynamique(Mat imgMat, bool convert)
 {
   if (imgMat.size().width > WIDTH) {
     double scale = (double) WIDTH  / imgMat.size().width;
@@ -93,9 +94,7 @@ void exo1(Mat imgMat, bool convert)
   int channels = imgMat.channels();
   bool color = channels != 1;
   if (convert && color) {
-    Mat greyMat;
-    cv::cvtColor(imgMat, greyMat, cv::COLOR_RGB2GRAY);  
-    imgMat = greyMat; 
+    cv::cvtColor(imgMat, imgMat, cv::COLOR_RGB2GRAY);  
     color = false;
   }
   
@@ -148,9 +147,42 @@ void exo1(Mat imgMat, bool convert)
   }
 }
 
+/*
+  @param float couleur du pixel a traiter
+  @return couleur la plus proche N&B
+*/
+float couleurProcheNB(float pixel)
+{
+  return round(pixel+.2);
+}
+
+void tramage_floyd_steinberg( cv::Mat input, cv::Mat &output )
+{
+  int width = input.rows;
+  int height = input.cols;
+  cv::cvtColor(input, input, COLOR_RGB2GRAY);
+  input.convertTo(output, CV_32FC1, 1/255.0);
+  
+  for (size_t y = 0; y < height-1; y++) {
+    for (size_t x = 1; x < width-1; x++){
+
+      float pixel = output.at<float>(x,y);
+      float newPixel = couleurProcheNB(pixel);
+      output.at<float>(x,y) = newPixel;
+      float e = pixel - newPixel;
+      
+      // color propagation
+      output.at<float>(x+1,y)   = output.at<float>(x+1,y)   + 7/16 * e;
+      output.at<float>(x-1,y+1) = output.at<float>(x-1,y+1) + 3/16 * e; 
+      output.at<float>(x,  y+1) = output.at<float>(x,  y+1) + 5/16 * e;
+      output.at<float>(x+1,y+1) = output.at<float>(x+1,y+1) + 1/16 * e; 
+    }
+  }
+  output.convertTo(output, CV_8UC1, 255.0);
+}
+
 int main(int argc, char *argv[])
 {
-
   bool convert = false;
   // look for image path in arguments
   if(argc < 2) {
@@ -170,7 +202,12 @@ int main(int argc, char *argv[])
   createTrackbar( "track", "TP1", &value, 255, NULL); // un slider
   Mat imgMat = imread(img);        // lit l'image img
 
- exo1(imgMat, convert);
+  // correction_dynamique(imgMat, convert);
+
+  
+  Mat tramedMat;
+  tramage_floyd_steinberg(imgMat, tramedMat);
+  afficheWindowMatrix("Tramed Image", tramedMat);
 
   while ( waitKey(50) < 0 )          // attend une touche
   { // Affiche la valeur du slider
