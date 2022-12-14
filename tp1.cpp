@@ -159,47 +159,114 @@ void correction_dynamique(Mat imgMat, bool convert)
   @param float couleur du pixel a traiter
   @return couleur la plus proche N&B
 */
-float couleurProche(float pixel)
+float best_color(float pixel)
 {
   return round(pixel);
 }
 
-void tramage_floyd_steinberg(cv::Mat input, Mat &output)
+void tramage_floyd_steinberg(Mat input, Mat &output)
 {
   // Question 2) b)
-  int width = input.rows;
-  int height = input.cols;
+  int height = input.rows;
+  int width = input.cols;
   input.convertTo(output, CV_32FC1, 1/255.0);
-  for (size_t y = 0; y < height-1; y++) {
-    for (size_t x = 1; x < width-1; x++){
+  for (size_t y = 0; y < height; y++) {
+    for (size_t x = 0; x < width; x++){
 
-      float pixel = output.at<float>(x,y);
-      float newPixel = couleurProche(pixel);
-      output.at<float>(x,y) = newPixel;
+      float pixel = output.at<float>(y,x);
+      float newPixel = best_color(pixel);
+      output.at<float>(y,x) = newPixel;
       float e = pixel - newPixel;
       
       // color propagation
       if (x < width-1)
-        output.at<float>(x+1,y)   = output.at<float>(x+1,y)   + 7/16.0 * e;
+        output.at<float>(y,x+1)   = output.at<float>(y,x+1)   + 7/16.0 * e;
       if (x > 0 && y < height-1)
-        output.at<float>(x-1,y+1) = output.at<float>(x-1,y+1) + 3/16.0 * e; 
+        output.at<float>(y+1,x-1) = output.at<float>(y+1,x-1) + 3/16.0 * e; 
       if (y < height-1)
-        output.at<float>(x,  y+1) = output.at<float>(x,  y+1) + 5/16.0 * e;
+        output.at<float>(y+1,x) = output.at<float>(y+1, x) + 5/16.0 * e;
       if (x < width-1 && y < height-1)
-        output.at<float>(x+1,y+1) = output.at<float>(x+1,y+1) + 1/16.0 * e; 
+        output.at<float>(y+1,x+1) = output.at<float>(y+1, x+1) + 1/16.0 * e; 
     }
   }
   output.convertTo(output, CV_8UC1, 255.0);
 }
 
-void tramage_fs_multi_chans(Mat input, Mat &output) 
+float distance_color_l2( Vec3f bgr1, Vec3f bgr2 )
 {
+  return sqrt(
+              ((bgr1[0] - bgr1[0]) * (bgr2[0] - bgr2[0])) +  
+              ((bgr1[1] - bgr2[1]) * (bgr2[1] - bgr2[1])) + 
+              ((bgr1[2] - bgr2[2]) * (bgr2[2] - bgr2[2]))
+              );
+}
+
+int best_color( Vec3f bgr, std::vector< Vec3f > colors )
+{
+  float dist = distance_color_l2(bgr, colors[0]);
+  int bestColorIdx = 0;
+  for (size_t i = 1; i < colors.size(); i++)
+  {
+    float newDist = distance_color_l2(bgr, colors[i]);
+    if (newDist < dist) {
+      dist = newDist;
+      bestColorIdx = i;
+    }
+  }
+  return bestColorIdx;
+}
+
+Vec3f error_color( Vec3f bgr1, Vec3f bgr2 )
+{
+  Vec3f error;
+  for (size_t i = 0; i < bgr1.rows; i++)
+  {
+    error[0] = bgr1[0] - bgr2[0];
+  }
+  return error;  
+}
+
+// Mat tramage_floyd_steinberg( Mat input, std::vector< Vec3f > colors )
+// {
+//   // Conversion de input en une matrice de 3 canaux flottants
+//   Mat fs;
+//   input.convertTo(fs, CV_32FC3, 1/255.0);
+//   int width = fs.rows;
+//   int height = fs.cols;
+//   // Pour chaque pixel (x,y) Faire
+//   // Algorithme Floyd-Steinberg
+//   for (size_t x = 0; x < width; x++) {
+//     for (size_t y = 0; y < height; y++) {
+//       float c = fs.at<float>(x,y);
+//       int i = best_color( c, colors )
+//       Vec3f e = error_color( c, colors[ i ] );
+//       fs.couleur(x,y) <- colors[ i ]
+//     // On propage e aux pixels voisins
+//     }
+//   }
+//   // On reconvertit la matrice de 3 canaux flottants en BGR
+//   Mat output;
+//   fs.convertTo( output, CV_8UC3, 255.0 );
+//   return output;
+// }
+
+
+void tramage(Mat input, Mat &output, bool convert) 
+{
+  bool color = convertToGray(input, convert);
+  if (color) {
+    // Question 2) c)
     std::vector<Mat> rgb;
     split(input, rgb);
     for (Mat &mat : rgb) {
       tramage_floyd_steinberg(mat, mat);
     }
     merge(rgb, output);
+  }
+  else {
+    //Question 2) b)
+    tramage_floyd_steinberg(input, output);
+  }
 }
 
 int main(int argc, char *argv[])
@@ -223,19 +290,13 @@ int main(int argc, char *argv[])
   createTrackbar( "track", "TP1", &value, 255, NULL); // un slider
   Mat imgMat = imread(img);        // lit l'image img
 
-
   scaleImage(imgMat, WIDTH);
-  // correction_dynamique(imgMat, convert);
+  correction_dynamique(imgMat, convert);
 
-  // tramage N&B
+  // tramage color & N&B
   Mat tramedMat;
-  // tramage_floyd_steinberg(imgMat, tramedMat);
-  // afficheWindowMatrix("Tramed Image", tramedMat);
-
-  // tramage color
-  tramage_fs_multi_chans(imgMat, tramedMat);
+  tramage(imgMat, tramedMat, convert);
   afficheWindowMatrix("Tramed Image Couleur", tramedMat);
-
 
   while ( waitKey(50) < 0 )          // attend une touche
   { // Affiche la valeur du slider
