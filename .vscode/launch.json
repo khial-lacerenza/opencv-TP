@@ -6,7 +6,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/tp2/build/tp2",
             "args": [
-                "../img/lena.jpg",
+                "../img/city.jpg",
                 // "0",
             ],
             "stopAtEntry": false,
