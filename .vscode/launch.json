@@ -4,10 +4,10 @@
             "name": "(gdb) Lancer",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/tp1",
+            "program": "${workspaceFolder}/tp2/build/tp2",
             "args": [
-                "img/city.jpg",
-                "1",
+                "../img/lena.jpg",
+                // "0",
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

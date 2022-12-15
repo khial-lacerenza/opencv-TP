@@ -62,5 +62,7 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "${workspaceFolder}/tp2",
+    "cmake.buildDirectory" : "${workspaceFolder}/tp2/build/"
 }

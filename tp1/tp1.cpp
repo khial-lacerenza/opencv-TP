@@ -5,6 +5,14 @@
 using namespace cv;
 
 const int WIDTH = 1000;
+const std::vector<Vec3f> CMYK = { 
+  cv::Vec3f({1.0, 1.0, 0.0}), 
+  cv::Vec3f({1.0, 0.0, 1.0}), 
+  cv::Vec3f({0.0, 1.0, 1.0}), 
+  cv::Vec3f({0.0, 0.0, 0.0}),
+  cv::Vec3f({1.0, 1.0, 1.0})
+};
+
 
 std::vector<double> histogramme( Mat image )
 {
@@ -72,7 +80,7 @@ void egaliser( Mat& image, const std::vector<double>& H_I )
   }
 }
 
-void afficheWindowMatrix(std::string name, Mat mat, WindowFlags flag = WINDOW_AUTOSIZE)
+void afficheWindowMatrix(std::string name, Mat mat, WindowFlags flag = WINDOW_NORMAL)
 {
     namedWindow(name, flag);
     imshow(name, mat);
@@ -167,8 +175,8 @@ float best_color(float pixel)
 void tramage_floyd_steinberg(Mat input, Mat &output)
 {
   // Question 2) b)
-  int height = input.rows;
   int width = input.cols;
+  int height = input.rows;
   input.convertTo(output, CV_32FC1, 1/255.0);
   for (size_t y = 0; y < height; y++) {
     for (size_t x = 0; x < width; x++){
@@ -180,7 +188,7 @@ void tramage_floyd_steinberg(Mat input, Mat &output)
       
       // color propagation
       if (x < width-1)
-        output.at<float>(y,x+1)   = output.at<float>(y,x+1)   + 7/16.0 * e;
+        output.at<float>(y,x+1) = output.at<float>(y,x+1) + 7/16.0 * e;
       if (x > 0 && y < height-1)
         output.at<float>(y+1,x-1) = output.at<float>(y+1,x-1) + 3/16.0 * e; 
       if (y < height-1)
@@ -195,13 +203,13 @@ void tramage_floyd_steinberg(Mat input, Mat &output)
 float distance_color_l2( Vec3f bgr1, Vec3f bgr2 )
 {
   return sqrt(
-              ((bgr1[0] - bgr1[0]) * (bgr2[0] - bgr2[0])) +  
-              ((bgr1[1] - bgr2[1]) * (bgr2[1] - bgr2[1])) + 
-              ((bgr1[2] - bgr2[2]) * (bgr2[2] - bgr2[2]))
+              ((bgr1[0] - bgr2[0]) * (bgr1[0] - bgr2[0])) +  
+              ((bgr1[1] - bgr2[1]) * (bgr1[1] - bgr2[1])) + 
+              ((bgr1[2] - bgr2[2]) * (bgr1[2] - bgr2[2]))
               );
 }
 
-int best_color( Vec3f bgr, std::vector< Vec3f > colors )
+int best_color( Vec3f bgr, std::vector<Vec3f> colors )
 {
   float dist = distance_color_l2(bgr, colors[0]);
   int bestColorIdx = 0;
@@ -221,34 +229,39 @@ Vec3f error_color( Vec3f bgr1, Vec3f bgr2 )
   Vec3f error;
   for (size_t i = 0; i < bgr1.rows; i++)
   {
-    error[0] = bgr1[0] - bgr2[0];
+    error[i] = bgr1[i] - bgr2[i];
   }
   return error;  
 }
 
-// Mat tramage_floyd_steinberg( Mat input, std::vector< Vec3f > colors )
-// {
-//   // Conversion de input en une matrice de 3 canaux flottants
-//   Mat fs;
-//   input.convertTo(fs, CV_32FC3, 1/255.0);
-//   int width = fs.rows;
-//   int height = fs.cols;
-//   // Pour chaque pixel (x,y) Faire
-//   // Algorithme Floyd-Steinberg
-//   for (size_t x = 0; x < width; x++) {
-//     for (size_t y = 0; y < height; y++) {
-//       float c = fs.at<float>(x,y);
-//       int i = best_color( c, colors )
-//       Vec3f e = error_color( c, colors[ i ] );
-//       fs.couleur(x,y) <- colors[ i ]
-//     // On propage e aux pixels voisins
-//     }
-//   }
-//   // On reconvertit la matrice de 3 canaux flottants en BGR
-//   Mat output;
-//   fs.convertTo( output, CV_8UC3, 255.0 );
-//   return output;
-// }
+void tramage_floyd_steinberg( Mat input, std::vector<Vec3f> colors, Mat &output)
+{
+  // Conversion de input en une matrice de 3 canaux flottants
+  Mat fs;
+  int width = input.cols;
+  int height = input.rows;
+  input.convertTo(fs, CV_32FC3, 1/255.0);
+
+  for (size_t y = 0; y < height; y++) {
+    for (size_t x = 0; x < width; x++) {
+      Vec3f c = fs.at<Vec3f>(y,x);
+      int i = best_color(c, colors);
+      Vec3f e = error_color(c, colors[i]);
+      fs.at<Vec3f>(y,x) = colors[i];
+      // On propage e aux pixels voisins
+      if (x < width-1)
+        fs.at<Vec3f>(y,x+1) = fs.at<Vec3f>(y,x+1) + 7/16.0 * e;
+      if (x > 0 && y < height-1)
+        fs.at<Vec3f>(y+1,x-1) = fs.at<Vec3f>(y+1,x-1) + 3/16.0 * e; 
+      if (y < height-1)
+        fs.at<Vec3f>(y+1,x) = fs.at<Vec3f>(y+1, x) + 5/16.0 * e;
+      if (x < width-1 && y < height-1)
+        fs.at<Vec3f>(y+1,x+1) = fs.at<Vec3f>(y+1, x+1) + 1/16.0 * e; 
+    }
+  }
+  // On reconvertit la matrice de 3 canaux flottants en BGR
+  fs.convertTo(output, CV_8UC3, 255.0 );
+}
 
 
 void tramage(Mat input, Mat &output, bool convert) 
@@ -269,6 +282,8 @@ void tramage(Mat input, Mat &output, bool convert)
   }
 }
 
+
+/*
 int main(int argc, char *argv[])
 {
   bool convert = false;
@@ -298,6 +313,12 @@ int main(int argc, char *argv[])
   tramage(imgMat, tramedMat, convert);
   afficheWindowMatrix("Tramed Image Couleur", tramedMat);
 
+  // tramage CMYK
+  Mat tramedCMYK;
+  tramage_floyd_steinberg(imgMat, CMYK, tramedCMYK);
+  afficheWindowMatrix("Tramed CMYK", tramedCMYK);
+
+
   while ( waitKey(50) < 0 )          // attend une touche
   { // Affiche la valeur du slider
     if (value != old_value)
@@ -305,4 +326,4 @@ int main(int argc, char *argv[])
       old_value = value;
     }
   }
-}
+}*/
