@@ -86,16 +86,16 @@ Mat gradient(Mat& input)
 bool voisinChanged(Mat &temp, Mat &g, float ref, size_t y, size_t x)
 {
   bool contour = false;
-  if (ref == 0) {
-    if (
-        (temp.at<float>(y,x-1) < 0 && temp.at<float>(y,x+1) > 0) || 
-        (temp.at<float>(y,x-1) < 0 && temp.at<float>(y,x+1) < 0) || 
-        (temp.at<float>(y-1,x) < 0 && temp.at<float>(y+1,x) > 0) || 
-        (temp.at<float>(y-1,x) > 0 && temp.at<float>(y+1,x) < 0)
+  if (ref > 0) {
+    if ((temp.at<float>(y,x-1) < 0) || 
+        (temp.at<float>(y,x+1) < 0) || 
+        (temp.at<float>(y-1,x) < 0) || 
+        (temp.at<float>(y+1,x) < 0)
       ) {
         contour = true;
       }
   }
+
   if (ref < 0) {
     if ((temp.at<float>(y,x-1) > 0) || 
         (temp.at<float>(y,x+1) > 0) || 
@@ -105,6 +105,7 @@ bool voisinChanged(Mat &temp, Mat &g, float ref, size_t y, size_t x)
         contour = true;
     }
   }
+  
   return contour;
 }
 
