@@ -1,5 +1,6 @@
 #include "opencv2/imgproc.hpp"
 #include <opencv2/highgui.hpp>
+#include <iostream>
 
 using namespace cv;
 
@@ -82,27 +83,77 @@ Mat gradient(Mat& input)
   return G;
 }
 
+bool voisinChanged(Mat &temp, Mat &g, float ref, size_t y, size_t x)
+{
+  bool contour = false;
+  if (ref == 0) {
+    if (
+        (temp.at<float>(y,x-1) < 0 && temp.at<float>(y,x+1) > 0) || 
+        (temp.at<float>(y,x-1) < 0 && temp.at<float>(y,x+1) < 0) || 
+        (temp.at<float>(y-1,x) < 0 && temp.at<float>(y+1,x) > 0) || 
+        (temp.at<float>(y-1,x) > 0 && temp.at<float>(y+1,x) < 0)
+      ) {
+        contour = true;
+      }
+  }
+  if (ref < 0) {
+    if ((temp.at<float>(y,x-1) > 0) || 
+        (temp.at<float>(y,x+1) > 0) || 
+        (temp.at<float>(y-1,x) > 0) || 
+        (temp.at<float>(y+1,x) > 0)
+      ) {
+        contour = true;
+    }
+  }
+  return contour;
+}
+
 Mat marrHildreth(Mat &input, int seuil)
 {
   int width = input.cols;
   int height = input.rows;
-  Mat G(height, width, CV_32FC1 , Scalar(0));
+  Mat output(height, width, CV_32FC1 , Scalar(255));
+  Mat G = gradient(input);
   Mat temp = filtre(input, maskLaplacien());
-  for (size_t y = 0; y < height; y++) {
-    for (size_t x = 0; x < width; x++) {
+  float s = seuil / 100.0;
+  for (size_t y = 1; y < height-1; y++) {
+    for (size_t x = 1; x < width-1; x++) {
 
-      bool contour = false;
-      // if voisin ont pas le même signe alors : 
-      if (contour && G.at<float>(y, x) >= seuil)
-        G.at<float>(y, x) = 0.0;
+      float ref = temp.at<float>(y, x);
+      bool contour = voisinChanged(temp, output, ref, y, x);
+   
+      
+      // if (x < width-1)
+      //   G.at<Vec3f>(y, x+1);
+      // if (x > 0)
+      //   G.at<Vec3f>(y, x-1);
+
+      // if (y < height-1)
+      //   G.at<Vec3f>(y+1, x);
+      // if (y > 0)
+      //   G.at<Vec3f>(y-1, x);
+
+      // if (x > 0 && y > 0)
+      //   G.at<Vec3f>(y-1,x-1);
+      // if (x < width-1 && y > 0)
+      //   G.at<Vec3f>(y-1,x+1);
+
+      // if (x > 0 && y < height-1)
+      //   G.at<Vec3f>(y+1,x-1);
+      // if (x < width-1 && y < height-1)
+      //   G.at<Vec3f>(y+1,x+1);
+
+      // if voisin ont pas le même signe al||s : 
+      if ( contour && G.at<float>(y, x) >= s)
+        output.at<float>(y, x) = 0.0;
       else
-        G.at<float>(y, x) = 1.0;
+        output.at<float>(y, x) = 1.0;
     }
   }
-  
-
-  return G;
+  return output;
 }
+
+
 int main(int argc, char* argv[])
 {
   namedWindow("Filter", WINDOW_AUTOSIZE);               // crée une fenêtre
@@ -133,6 +184,8 @@ int main(int argc, char* argv[])
       if (asciicode == 'x') input = filtre(input, maskSobelX(), 0.5);
       if (asciicode == 'y') input = filtre(input, maskSobelY(), 0.5);
       if (asciicode == 'g') input = gradient(input);
+      if (asciicode == 't') input = marrHildreth(input, seuil);
+
       imshow("Filter", input );            // l'affiche dans la fenêtre
   }
 }
