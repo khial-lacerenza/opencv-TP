@@ -48,7 +48,7 @@ Mat maskId()
     return (Mat_<float>(3,3) << 0, 0, 0, 0, 1, 0, 0, 0, 0);
 }
 
-Mat reshaussmentConstraste(Mat &input, int alpha) 
+Mat reshaussmentConstraste(Mat &input, int alpha = 200) 
 {
   float a = alpha / 1000.0;
   Mat mask;
@@ -109,6 +109,7 @@ bool voisinChanged(Mat &temp, Mat &g, float ref, size_t y, size_t x)
   return contour;
 }
 
+
 Mat marrHildreth(Mat &input, int seuil)
 {
   int width = input.cols;
@@ -120,32 +121,20 @@ Mat marrHildreth(Mat &input, int seuil)
   for (size_t y = 1; y < height-1; y++) {
     for (size_t x = 1; x < width-1; x++) {
 
-      float ref = temp.at<float>(y, x);
-      bool contour = voisinChanged(temp, output, ref, y, x);
-   
+      float min = 0.0;
+      float max = 0.0;
+      for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+          if (temp.at<float>(y+i, x+j) < min)
+            min = temp.at<float>(y+i, x+j);
+          if (temp.at<float>(y+i, x+j) > max)
+            max = temp.at<float>(y+i, x+j);
+        }
+      }
+
+      bool contour = min < 0.0 && max > 0.0;
       
-      // if (x < width-1)
-      //   G.at<Vec3f>(y, x+1);
-      // if (x > 0)
-      //   G.at<Vec3f>(y, x-1);
-
-      // if (y < height-1)
-      //   G.at<Vec3f>(y+1, x);
-      // if (y > 0)
-      //   G.at<Vec3f>(y-1, x);
-
-      // if (x > 0 && y > 0)
-      //   G.at<Vec3f>(y-1,x-1);
-      // if (x < width-1 && y > 0)
-      //   G.at<Vec3f>(y-1,x+1);
-
-      // if (x > 0 && y < height-1)
-      //   G.at<Vec3f>(y+1,x-1);
-      // if (x < width-1 && y < height-1)
-      //   G.at<Vec3f>(y+1,x+1);
-
-      // if voisin ont pas le même signe al||s : 
-      if ( contour && G.at<float>(y, x) >= s)
+      if (contour && G.at<float>(y, x) >= s)
         output.at<float>(y, x) = 0.0;
       else
         output.at<float>(y, x) = 1.0;
